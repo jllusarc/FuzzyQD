@@ -87,7 +87,7 @@ def modify_yaml_for_block(block_yaml_path, params, block_files, block_index, blo
         if not cube_files_in_block:
             raise ValueError(f"No .cube files found in block folder '{block_folder}'")
         first_cube_file = os.path.basename(cube_files_in_block[0])
-        match = re.search(r'WFN_0(\d+)', first_cube_file)
+        match = re.search(r'WFN_(\d+)', first_cube_file)
         if match:
             first_cube_index = int(match.group(1))
             block_params['files']['cube_0'] = first_cube_index
@@ -107,21 +107,21 @@ def modify_yaml_for_block(block_yaml_path, params, block_files, block_index, blo
         for point in params['k_path']['points']:
             yaml_file.write(f"    - {point}\n")
 
-def create_slurm_script(block_folder, block_yaml_path):
+def create_slurm_script(block_folder, block_yaml_path, block_index):
     """Create a Slurm batch script for each block folder."""
     slurm_script_path = os.path.join(block_folder, 'run_bse.slurm')
     with open(slurm_script_path, 'w') as slurm_file:
         slurm_file.write("#!/bin/bash\n")
         slurm_file.write("#SBATCH --account=euhpc_r02_106\n")
         slurm_file.write("#SBATCH --partition=dcgp_usr_prod\n")
-        slurm_file.write("#SBATCH --job-name=FuzzyQD\n")
+        slurm_file.write(f"#SBATCH --job-name=FuzzyQD{block_index + 1}\n")
         slurm_file.write("#SBATCH --time=1-00:00:00\n")
         slurm_file.write("#SBATCH --nodes=1\n")
         slurm_file.write("#SBATCH --ntasks-per-node=1\n")
         slurm_file.write("#SBATCH --cpus-per-task=112\n")
         slurm_file.write("#SBATCH --output=%x-%j.out\n")
         slurm_file.write("#SBATCH --error=%x-%j.err\n\n")
-        slurm_file.write("srun --ntasks=112 python bse_main_new.py input_parameters.yaml\n")
+        slurm_file.write("srun fuzzyqd input_parameters.yaml\n")
 
 def perform_bse_calculations(params):
     """Perform the main BSE calculations based on the input parameters."""
@@ -169,7 +169,7 @@ def perform_bse_calculations(params):
         'cube_0': params['files'].get('cube_0', 5542),
         'N_cube': params['files'].get('N_cube', 300),
         'State': 'STATES',
-        'WFN': '-WFN_0',
+        'WFN': '-WFN_',
         'Addition': '_1-1_0',
         'h5_file': 'cubedata_inp',
         'Energy': 'E',
